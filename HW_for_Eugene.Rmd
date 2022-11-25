@@ -1,0 +1,137 @@
+---
+title: "HW_for_Eugene"
+author: "Nadezhda Tsurikova"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library(dplyr)
+library(epiR)
+library(ggplot2)
+library(htmlTable)
+library(openxlsx)
+library(psych)
+library(readr)
+library(labelled)
+library(readxl)
+library(rlang)
+library(rmarkdown)
+library(tibble)
+library(xtable)
+library(gtsummary)
+library(tidyverse)
+library(tidyr)
+library(purrr)
+library(flextable)
+library(Rmisc)
+library(epitools)
+library(officer)
+library(mlbench)
+library(coin)
+library(writexl)
+
+```
+
+
+
+*статистический отчёт с таблицами описательной статистики по всем имеющимся визитам по всем группам для каждой переменной*
+
+```{r}
+data <- read_excel("data/raw/data_excel (2).xlsx")
+```
+
+*статистический отчёт по группам*
+
+```{r}
+ad <- data [, c(1: 5)]
+
+tbl1 <- ad %>%
+  select(`Группа`, `Возраст`, `Пол`, `Рост`, `Группа крови`) %>%
+  tbl_summary(by = `Группа`, 
+              missing_text = "Пропущенные значения",
+              type = all_continuous() ~ "continuous2",
+              statistic = all_continuous() ~ c("{N_nonmiss}",
+                                               "{median} ({p25}, {p75})", 
+                                               "{min}, {max}", "{mean} ({sd})")) %>%
+  add_ci()  %>%
+  add_p(pvalue_fun = function(x) style_pvalue(x, digits = 3)) %>% 
+  add_n() %>% 
+  modify_header(
+    label = "**Показатель**",
+    n = "**все пациенты**") %>% 
+  modify_spanning_header(all_stat_cols() ~ "**Группа**") %>%
+  bold_labels() %>% 
+  as_flex_table()
+
+knitr::knit_print(tbl1)
+```
+
+*статистический отчёт по визитам*
+
+```{r}
+data<-data.frame(lapply(data, function(x) gsub(",", ".", x, fixed = TRUE)))
+data <- data.frame(data)
+```
+
+
+```{r}
+data <- data %>% mutate_at(c("Базофилы_E1", "Эозинофилы_E1", "Гемоглобин_E1",
+                             "Эритроциты_E1", "Базофилы_E2", "Эозинофилы_E2",
+                             "Гемоглобин_E2","Эритроциты_E2"), as.numeric)
+
+```
+
+
+```{r}
+as <- data [, c(1, 6:9)]
+
+tbl2 <- as %>%
+  select(`Группа`, `Базофилы_E1`, `Эозинофилы_E1`, `Гемоглобин_E1`,`Эритроциты_E1`) %>%
+  tbl_summary(by = `Группа`, 
+              missing_text = "Пропущенные значения",
+              type = all_continuous() ~ "continuous2",
+              statistic = all_continuous() ~ c("{N_nonmiss}",
+                                               "{median} ({p25}, {p75})", 
+                                               "{min}, {max}", "{mean} ({sd})")) %>%
+  add_ci()  %>%
+  add_p(pvalue_fun = function(x) style_pvalue(x, digits = 3)) %>% 
+  add_n() %>% 
+  modify_header(
+    label = "**Показатель**",
+    n = "**все пациенты**") %>% 
+  modify_spanning_header(all_stat_cols() ~ "**Группа**") %>%
+  bold_labels() %>% 
+  as_flex_table()
+
+knitr::knit_print(tbl2)
+```
+
+```{r}
+af <- data [, c(1, 10:13)]
+
+tbl3 <- af %>%
+  select(`Группа`, `Базофилы_E2`, `Эозинофилы_E2`,                              `Гемоглобин_E2`,`Эритроциты_E2`) %>%
+  tbl_summary(by = `Группа`, 
+              missing_text = "Пропущенные значения",
+              type = all_continuous() ~ "continuous2",
+              statistic = all_continuous() ~ c("{N_nonmiss}",
+                                               "{median} ({p25}, {p75})", 
+                                               "{min}, {max}", "{mean} ({sd})")) %>%
+  add_ci()  %>%
+  add_p(pvalue_fun = function(x) style_pvalue(x, digits = 3)) %>% 
+  add_n() %>% 
+  modify_header(
+    label = "**Показатель**",
+    n = "**все пациенты**") %>% 
+  modify_spanning_header(all_stat_cols() ~ "**Группа**") %>%
+  bold_labels() %>% 
+  as_flex_table()
+
+knitr::knit_print(tbl3)
+```
+
