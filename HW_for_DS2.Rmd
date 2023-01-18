@@ -1,0 +1,356 @@
+---
+title: "HW for Dmitrii S.(2)"
+author: "Nadezhda Tsurikova"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r}
+library(readr)
+data1 <- read_csv("C:/R_wd/Serebr/insurance_cost.csv")
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(plotly)
+
+plot1 <- plot_ly(
+  data = data1[(data1$bmi!= 0) & (data1$charges!= 0),],
+  x = ~ bmi,
+  y = ~ charges,
+  color = ~smoker
+) 
+print(plot1)
+```
+
+```{r}
+plot <- data1 %>% 
+  filter(bmi != 0 & charges != 0) %>% 
+  ggplot(aes(x=bmi, y=charges, color = smoker)) + 
+  geom_point(size=3) +
+  theme_minimal()
+
+print(plot)
+```
+
+```{r}
+library(corrplot)
+data_clear <- data1[, c(1,3,4,7)]
+data_cor <- cor(data_clear)
+print(data_cor)
+corrplot(data_cor, method = 'circle')
+```
+
+```{r}
+corrplot(data_cor, method = 'square')
+```
+
+```{r}
+library(corrr)
+
+data_cor %>% 
+  network_plot(min_cor = .0)
+```
+
+```{r}
+data1$sex <- ifelse(data1$sex == "female", 1, 0)
+
+data1$smoker <- ifelse(data1$smoker == "yes", 1, 0)
+
+data1$northeast <- ifelse(data1$region == "northeast", 1, 0)
+
+data1$northwest <- ifelse(data1$region == "northwest", 1, 0)
+
+data1$southeast <- ifelse(data1$region == "southeast", 1, 0)
+
+data1$southwest <- ifelse(data1$region == "southwest", 1, 0)
+
+data2 <- data1 %>%
+  select(is.numeric)
+```
+
+
+```{r}
+data2 <- data2 %>% 
+  mutate(
+      age_group = case_when(
+      age < 31 ~ "18-30",
+      age >= 31 & age < 41 ~ "31-40",
+      age >= 41 & age < 51 ~ "41-50",
+      age >= 51 & age < 61 ~ "51-60",
+      age >= 61 ~ "60+"
+    ))
+
+data_aggr <- data2 %>% 
+  group_by(age_group, smoker) %>% 
+  summarise(N = n())
+
+```
+
+```{r}
+data_aggr %>% 
+  ggplot(aes(x = age_group, y = smoker, fill = N)) +
+  geom_tile(color = "black") +
+  geom_text(aes(label = N), color = "white", size = 4) +
+  coord_fixed()
+```
+
+```{r}
+data2_clear_scaled <- scale(data2[,-c(11)])
+head(data2_clear_scaled)
+```
+
+```{r}
+library(ggfortify) 
+
+autoplot(data2_clear_scaled)
+```
+
+```{r}
+library(factoextra)
+```
+
+```{r}
+data2_clear_dist <- dist(data2_clear_scaled, method = "euclidean")
+as.matrix(data2_clear_dist)[1:6,1:6]
+```
+
+```{r}
+data2_clear_hc <- hclust(d = data2_clear_dist,                         method = "ward.D2")
+```
+
+
+```{r}
+fviz_dend(data2_clear_hc, 
+          cex = 0.1)
+```
+
+```{r}
+library(pheatmap)
+```
+
+```{r}
+pheatmap(data2_clear_scaled)
+```
+
+```{r}
+library("factoextra")
+
+res.dist <- dist(data2, method = "euclidean")
+
+res.hc <- hclust(d = res.dist, method = "ward.D2")
+
+res.hc2 <- hclust(res.dist, method = "average")
+
+res.coph <- cophenetic(res.hc)
+
+grp <- cutree(res.hc, k = 4)
+
+fviz_cluster(list(data = data2_clear_scaled, cluster = grp),
+
+palette = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+ellipse.type = "convex", # Concentration ellipse
+repel = TRUE, # Avoid label overplotting (slow)
+show.clust.cent = FALSE, ggtheme = theme_minimal())
+```
+
+Я взяла для рса возраст и имт, потому что они мало коррелируют (если я правильно поняла сильная корреляция ухудшает рса)
+
+```{r}
+data3 <- data2 %>% 
+  select(age, bmi)
+
+data3 <- data3 %>% 
+  mutate(pc1 = bmi + age)
+
+ggplot() +
+  geom_point(data = data3, aes(x = bmi, y = age)) +
+  theme_minimal()
+```
+
+```{r}
+data3 <- data3 %>% 
+  mutate(pc1 = bmi + age)
+
+data3 <- data3 %>% 
+  mutate(pc1_decile = ntile(pc1, 10))
+
+data3 <- data3 %>% 
+  mutate(pc1_decile_ch = case_when(
+    pc1_decile == 1 ~ "1",
+    (pc1_decile == 5) | (pc1_decile == 6) ~ "5-6",
+    pc1_decile == 10 ~ "10"
+  ))
+data3
+```
+
+```{r}
+ggplot() +
+  geom_point(data = data3, 
+             aes(x = bmi, 
+                 y = age, 
+                 color = pc1_decile_ch)) +
+  theme_minimal()
+```
+
+```{r}
+data33 <- data3 %>% 
+  mutate(pc2 = bmi - age) %>% 
+  mutate(pc2_decile = ntile(pc2, 10)) %>% 
+    mutate(pc2_decile_ch = case_when(
+    pc2_decile == 1 ~ "1",
+    (pc2_decile == 5) | (pc2_decile == 6) ~ "5-6",
+    pc2_decile == 10 ~ "10"
+  ))
+```
+
+```{r}
+ggplot() +
+  geom_point(data = data33, 
+             aes(x = bmi, 
+                 y = age, 
+                 color = pc2_decile_ch)) +
+  theme_minimal()
+```
+
+```{r}
+data_example_pc1 <- data3 %>%
+  group_by(pc1_decile) %>% # Группируем по квантилям (1:10)
+  summarise(bmi_pc1 = mean(bmi), # В каждом квантиле находим среднее для mass
+            age_pc1 = mean(age)) # В каждом квантиле находим среднее для triceps
+
+# Сделаем тоже самое с pc2
+data_example_pc2 <- data33 %>%
+  group_by(pc2_decile) %>%
+  summarise(bmi_pc2 = mean(bmi),
+            age_pc2 = mean(age))
+```
+
+
+```{r}
+ggplot() +
+  geom_point(data = data3,
+             aes(x = bmi, y = age)) + # Основные данные
+  geom_smooth(data = data_example_pc1, # Отмечаем линию тренда по pc1
+              aes(x = bmi_pc1, y = age_pc1), # Используем значения mass и triceps, которые являются средними для децилей pc1
+              method=lm,
+              color="Blue", fullrange = F,
+              size = 2
+              ) +
+  geom_smooth(data = data_example_pc2, # Аналогично с pc2
+              aes(x = bmi_pc2, y = age_pc2),
+              method=lm, 
+              orientation = "y", # Технический трюк. Просим R отстраивать линию вдоль оси y, а не x
+              color="Green", fullrange = F,
+              size = 2
+              ) +
+  theme_minimal()
+```
+
+здесь мне стало понятно, что все же стоило для РСА брать переменные которые сильно коррелируют, а не слабо коррелирут. 
+
+```{r}
+ggplot() +
+  geom_point(data = data33, aes(x = pc1, y = pc2)) +
+    geom_smooth(data = data33, # Отмечаем линию тренда по pc1
+              aes(x = pc1, y = pc2), method=lm)+
+  theme_minimal() 
+```
+
+
+
+```{r}
+
+data3<- data3 %>% 
+  select(bmi, age) 
+
+
+data.pca <- prcomp(data3, 
+                scale = T)
+```
+
+```{r}
+data.pca$rotation
+```
+
+
+```{r}
+ggplot() +
+  geom_point(data = data.pca$x, # Новые переменные лежат здесь
+             aes(x = PC1, y = PC2)) +
+  theme_minimal() 
+```
+
+```{r}
+plot_ly(data = data_clear, 
+        x=~bmi, 
+        y=~age, 
+        z=~charges, 
+        size = 1,
+        type="scatter3d", mode="markers")
+```
+
+
+```{r}
+library(FactoMineR)
+library(ggbiplot)
+```
+
+```{r}
+data_full.pca <- prcomp(data_clear, 
+                        scale = T)
+
+summary(data_full.pca)
+```
+
+Полученные данные говорят, что на первые 2 компоненты приходится 60% дисперсии, а на 3 компоненты - 82%, что считается хорошим результатом.
+
+```{r}
+fviz_eig(data_full.pca, 
+         addlabels = T, 
+         ylim = c(0, 40))
+```
+
+этот график подтверждает, то что мы увидели в таблице.
+Проведем анализ данных по переменным
+
+```{r}
+fviz_pca_var(data_full.pca, col.var = "contrib")
+```
+
+графике выше видно, что сильная позитивная корреляция с РСА2 есть в группе детей, а позитивная корреляция с рса1 есть у колонки возраст и штрафы.
+
+```{r}
+ggbiplot(data_full.pca, 
+         scale=0, alpha = 0.1) + 
+  theme_minimal()
+```
+
+
+```{r}
+plot <- data2 %>% 
+  mutate(
+    age_group = factor(age_group, levels = c("18-30", "31-40", "41-50", "51-60", "60+" )),
+    smoker = case_when(
+      smoker == 'yes' ~ "smoke-Positive",
+      smoker == 'no' ~ "smoke-Negative"
+    )) %>% 
+  filter(age != 0 & bmi != 0) %>% 
+  ggplot(aes(x=age, y=bmi, color = age_group)) + 
+  geom_point(size = 3, alpha = 0.8) + 
+  facet_grid(. ~ smoker) +
+  scale_color_brewer(palette = 'OrRd') + 
+  guides(color = guide_legend(title = 'Age Groups')) +
+  scale_x_log10() + scale_y_log10() +
+  theme_minimal() 
+
+plot
+```
+
