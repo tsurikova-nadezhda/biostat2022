@@ -1,0 +1,71 @@
+---
+title: "Anova_part2"
+author: "Nadezhda Tsurikova"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(readxl)
+library(tidyverse)
+library(tidyr)
+library(tibble)
+soccer_general <- read_excel("soccer.xlsx")[, 2:6] %>% mutate(Position = as.factor(Position), 
+    Nationality = as.factor(Nationality), 
+    Age = as.numeric(Age), 
+    Height = as.numeric(Height)
+) %>% 
+filter(Nationality %in% c("Spanish", "Italian", "German", "English", "Argentinian")) 
+
+soccer_wrk <- soccer_general[sample(1:nrow(soccer_general), 150), ] %>% 
+    mutate(Nationality = factor(Nationality))
+```
+
+```{r}
+library(sandwich)
+library(lmtest)
+lm(Height~Position, data=soccer_wrk) %>% anova
+```
+```{r}
+pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, pool.sd = FALSE)
+```
+
+есть статистически значимая разница между
+Goalkeeper -Defender
+Goalkeeper - Forward
+Goalkeeper-Midfielder
+Midfielder-Defender
+
+```{r}
+library(pairwiseCI)
+CI1 <- pairwiseTest(Height~Position, data=soccer_wrk, method="t.test")
+
+summary(CI1)
+```
+Midfielder-Forward
+Forward-Defender и Midfielder-Forward не покрывают.
+
+```{r}
+summary(CI1, p.adjust.method="bonferroni")
+```
+
+Midfielder-Forward, Forward-Defender не покрывают реальную разницу между средним ростом
+
+ 
+```{r}
+boxplot(Height~Position, data=soccer_wrk)
+```
+ 
+```{r}
+summary(CI1, p.adjust.method="holm")
+```
+ 
+```{r}
+summary(CI1, p.adjust.method="BH")
+```
+ 
