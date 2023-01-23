@@ -1,0 +1,82 @@
+---
+title: "Anova+post_hoc"
+author: "Nadezhda Tsurikova"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(dplyr)
+library(readxl)
+library(tidyverse)
+library(tidyr)
+library(tibble)
+
+soccer_general <- read_excel("soccer.xlsx")[, 2:6] %>% 
+    mutate(Position = as.factor(Position), 
+    Nationality = as.factor(Nationality), 
+    Age = as.numeric(Age), 
+    Height = as.numeric(Height)
+) %>% 
+filter(Nationality %in% c("Spanish", "Italian", "German", "English", "Argentinian")) 
+
+set.seed(1) 
+
+soccer_wrk <- soccer_general[sample(1:nrow(soccer_general), 150), ] %>% 
+    mutate(Nationality = factor(Nationality))
+```
+
+
+
+```{r}
+lm(Height~Position, data=soccer_wrk) %>% anova
+```
+
+Pr(>F) 1.635e-07(меньше 0.05), т.е. мы отвергаем нулевую гипотезу о том, что разницы между ростом и позицией нет.
+
+
+F-тест Велша:
+```{r}
+oneway.test(Height ~ Position, data = soccer_wrk)
+```
+
+
+
+```{r}
+library(multcomp)
+mo <- lm(Height~Position, data=soccer_wrk)
+hbw <- mo %>% glht (linfct = mcp(Position="Tukey"))
+hbw %>% summary
+```
+
+Полученный анализ говорит о том, что статистически значимая разница в средних между ростом и положением на поле есть у Goalkeeper - Defender, Midfielder - Defender, Goalkeeper - Forward, Midfielder - Goalkeeper. Т.о. мы отвергает нулевую гипотезу о равенстве средних в группах.
+
+```{r}
+hbw %>% confint()
+```
+95% ДИ пересекают ноль только у Forward - Defender и Midfielder - Forward, т.е. с 95% вероятностью эти 2 пары будут охватывать истинное значение среднего
+
+```{r}
+par(mar=c(5,10,4,2)+0.1)
+hbw %>% plot(xlab="Height")
+```
+ 
+В первом случае у нас были выявлены следующие пары с уровнем p-value < 0.05:
+Goalkeeper - Defender, 
+Midfielder - Defender, 
+Goalkeeper - Forward, 
+Midfielder - Goalkeeper,
+
+в случае оценки 95% ДИ была выявлена статистическая значимость между ростом и позицией среди 
+Forward - Defender и Midfielder - Forward.
+
+```{r}
+lm(Height~Nationality, data=soccer_wrk) %>% anova
+```
+
+мы не можем отвергнуть нулевую гипотезу, так как Pr(>F) 0.4371 (т.е. разницы между ростом и командой не выявлено).
