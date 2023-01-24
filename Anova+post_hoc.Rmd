@@ -72,11 +72,29 @@ Midfielder - Defender,
 Goalkeeper - Forward, 
 Midfielder - Goalkeeper,
 
-в случае оценки 95% ДИ была выявлена статистическая значимость между ростом и позицией среди 
-Forward - Defender и Midfielder - Forward.
+в случае оценки 95% ДИ было выявлено что пары 
+Forward - Defender и Midfielder - Forward пересекают ноль.
 
 ```{r}
 lm(Height~Nationality, data=soccer_wrk) %>% anova
 ```
 
 мы не можем отвергнуть нулевую гипотезу, так как Pr(>F) 0.4371 (т.е. разницы между ростом и командой не выявлено).
+
+```{r}
+holm_adj <- pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, p.adjust.method = "holm", pool.sd = FALSE)
+print(holm_adj)
+```
+
+Нулевая гипотеза: разница в среднем росте футболистов равна нулю. 
+Разница в средних в каждой паре, кроме (Midfielder -Forward, Forward- Defender  ) не равна нулю, следовательно мы отрицаем нулевую гипотезу для всех кроме пар  Midfielder -Forward b Forward- Defender.
+
+```{r}
+BH_adj <- pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, p.adjust.method = "BH", pool.sd = FALSE)
+print(BH_adj)
+```
+
+Нулевая гипотеза: разница в среднем росте футболистов равна нулю. 
+Разница в средних в каждой паре, кроме (Midfielder -Forward, Forward- Defender  ) не равна нулю, следовательно мы отрицаем нулевую гипотезу для всех кроме пар  Midfielder -Forward и Forward- Defender.
+
+

@@ -11,7 +11,7 @@
 
 <meta name="author" content="Nadezhda Tsurikova" />
 
-<meta name="date" content="2023-01-23" />
+<meta name="date" content="2023-01-24" />
 
 <title>Anova+post_hoc</title>
 
@@ -352,7 +352,7 @@ display: none;
 
 <h1 class="title toc-ignore">Anova+post_hoc</h1>
 <h4 class="author">Nadezhda Tsurikova</h4>
-<h4 class="date">2023-01-23</h4>
+<h4 class="date">2023-01-24</h4>
 
 </div>
 
@@ -482,8 +482,8 @@ hbw %&gt;% plot(xlab=&quot;Height&quot;)</code></pre>
 <p>В первом случае у нас были выявлены следующие пары с уровнем p-value
 &lt; 0.05: Goalkeeper - Defender, Midfielder - Defender, Goalkeeper -
 Forward, Midfielder - Goalkeeper,</p>
-<p>в случае оценки 95% ДИ была выявлена статистическая значимость между
-ростом и позицией среди Forward - Defender и Midfielder - Forward.</p>
+<p>в случае оценки 95% ДИ было выявлено что пары Forward - Defender и
+Midfielder - Forward пересекают ноль.</p>
 <pre class="r"><code>lm(Height~Nationality, data=soccer_wrk) %&gt;% anova</code></pre>
 <pre><code>## Analysis of Variance Table
 ## 
@@ -493,6 +493,40 @@ Forward, Midfielder - Goalkeeper,</p>
 ## Residuals   145 6263.0  43.193</code></pre>
 <p>мы не можем отвергнуть нулевую гипотезу, так как Pr(&gt;F) 0.4371
 (т.е. разницы между ростом и командой не выявлено).</p>
+<pre class="r"><code>holm_adj &lt;- pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, p.adjust.method = &quot;holm&quot;, pool.sd = FALSE)
+print(holm_adj)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with non-pooled SD 
+## 
+## data:  soccer_wrk$Height and soccer_wrk$Position 
+## 
+##            Defender Forward Goalkeeper
+## Forward    0.29118  -       -         
+## Goalkeeper 0.00103  0.00118 -         
+## Midfielder 0.00099  0.29118 1.5e-07   
+## 
+## P value adjustment method: holm</code></pre>
+<p>Нулевая гипотеза: разница в среднем росте футболистов равна нулю.
+Разница в средних в каждой паре, кроме (Midfielder -Forward, Forward-
+Defender ) не равна нулю, следовательно мы отрицаем нулевую гипотезу для
+всех кроме пар Midfielder -Forward b Forward- Defender.</p>
+<pre class="r"><code>BH_adj &lt;- pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, p.adjust.method = &quot;BH&quot;, pool.sd = FALSE)
+print(BH_adj)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with non-pooled SD 
+## 
+## data:  soccer_wrk$Height and soccer_wrk$Position 
+## 
+##            Defender Forward Goalkeeper
+## Forward    0.29106  -       -         
+## Goalkeeper 0.00051  0.00059 -         
+## Midfielder 0.00051  0.17471 1.5e-07   
+## 
+## P value adjustment method: BH</code></pre>
+<p>Нулевая гипотеза: разница в среднем росте футболистов равна нулю.
+Разница в средних в каждой паре, кроме (Midfielder -Forward, Forward-
+Defender ) не равна нулю, следовательно мы отрицаем нулевую гипотезу для
+всех кроме пар Midfielder -Forward и Forward- Defender.</p>
 
 
 
