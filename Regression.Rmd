@@ -69,42 +69,57 @@ summary(lm2)
 Коэффициент детерминации (Multiple R-squared)  и модифицированный коэф.детерминации (Adjusted R-squared) =  0.3348 и 0.3211, соответственно, т.е. остались практически такими же.
 
 
-```{r}
-n=50
-x1 <- rnorm(n, mean=1)
-x2 <- x1*(1+runif(n, min = 0, max = 0.1))
-x3 <- x1+x2+rnorm(n, sd=0.1)
-x4 <- x3*(1+runif(n, min = 0, max = 0.1))
-x5 <- x3+x2+rnorm(n, sd=0.05)
-y <- x1+x2+x3+x4+x5+rnorm(n, sd=0.5)
 
+Задание 2
+
+```{r}
+set.seed(103)
+x1 <- rnorm(50, 5, 3)
+set.seed(45)
+x2 <- x1*(1 + runif(50, 0, 0.05))
+set.seed(575)
+x3 <- x1 + rnorm(50, 0, 0.055)
+set.seed(345)
+x4 <- x2*(1 + runif(50, 0, 0.05))
+set.seed(575)
+x5 <- x3 + x4 + rnorm(50, 0, 0.025)
+set.seed(878)
+y <- 10 + x1 - 2*x2 + 3*x3 -4*x4 + 5*x5 + rnorm(50, 0, 1)
+```
+
+Результаты оценки линейной регрессии:
+```{r}
 lm3 <- lm(y~x1+x2+x3+x4+x5)
 summary(lm3)
 ```
 
+Результаты оценки LASSO-регрессии с параметром r=0.2:
+
 ```{r}
-plot(lm3)
+l_reg <- glmnet(cbind(x1,x2,x3,x4,x5), y, family = "gaussian", alpha = 1)
+coef(l_reg, s = 0.2) 
+```
+
+Высокий коэффициент только у одной переменной - х1, так как x2, x3, x4 и x5 зависели от x1, такой результат был ожидаемым. 
+
+Пример сильно зависимых показателей, которые могут быть связаны регрессионным соотношением - расходы на рекламу и доходы.
+
+задание №3
+
+
+```{r}
+set.seed(123)
+Lymph <- rnorm(201, 20, 5)
+Neut <- rnorm(201, 80, 5)
+NLR <- Neut/Lymph
+Sepsis1 <- ifelse(NLR < 3, 0, ifelse(NLR > 9, 1, (NLR - 3)/6))
+Sepsis <- rbinom(201, 1, Sepsis1)
 ```
 
 ```{r}
-n=50
-a <- matrix(c(x1,x2,x3,x4,x5), ncol = 5)
-b <- rnorm(n)
-la <- glmnet(a, b, family = "gaussian", intercept = F, alpha = 1, r = 0.2)
-
-matplot(log(la$lambda), t(la$beta),  main="Lasso",lwd = 2, xlim = c(-10, 10))
+log_reg <- glm(Sepsis ~ Lymph + Neut, family = "binomial")
+log_reg
 ```
 
-Искренне и очень долго пыталась разобраться почему у меня не работает график, но так  не смогла, при попытке дописать в функцию type=1, у меня выскакивает ошибка.
-Нашла такой вариант 
 
-```{r}
-predict(la, type = "coefficient", family = "gaussian" , r = 0.2)
-plot(la, xvar = "lambda")
-
-```
-
-```{r}
-
-```
-
+Извините, дальше не успела, отправила что смогла.
