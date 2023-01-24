@@ -26,46 +26,146 @@ soccer_wrk <- soccer_general[sample(1:nrow(soccer_general), 150), ] %>%
     mutate(Nationality = factor(Nationality))
 ```
 
+
 ```{r}
 library(sandwich)
 library(lmtest)
 lm(Height~Position, data=soccer_wrk) %>% anova
-```
-```{r}
-pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, pool.sd = FALSE)
+
 ```
 
-есть статистически значимая разница между
-Goalkeeper -Defender
-Goalkeeper - Forward
-Goalkeeper-Midfielder
-Midfielder-Defender
+При уровне значимости альфа =0.05(5%) мы можем отвергнуть нулевую гипотезу об одновременном равенстве среднего роста для игроков на разных позициях на поле, т.е. можно считать, что рост игрока связан с его позицией на поле.
 
 ```{r}
-library(pairwiseCI)
-CI1 <- pairwiseTest(Height~Position, data=soccer_wrk, method="t.test")
-
-summary(CI1)
+oneway.test(Height ~ Position, soccer_wrk)
 ```
-Midfielder-Forward
-Forward-Defender и Midfielder-Forward не покрывают.
+
+с помощью F-теста Уэлша получаем такой же результат, если сделать предположение, что дисперсия в росте может быть разной в зависимости от позиции игрока на поле (т.е. отвергаем нулевую гипотезу и можем считать, что рост игрока связан с его позицией на поле)
 
 ```{r}
-summary(CI1, p.adjust.method="bonferroni")
+soccer_wrk %>%
+ ggplot(aes(Position, Height)) +
+  geom_boxplot(width=.33) +
+  geom_hline(yintercept = mean(soccer_wrk$Height), color = "red", linetype = "dashed", size = 0.5) +
+  ylab("Recall (95% CI)") +
+  xlab("")
 ```
 
-Midfielder-Forward, Forward-Defender не покрывают реальную разницу между средним ростом
+Для наглядности нарисовали боксплоты.
 
+Post-hoc анализ:
+процедура Хоторна-Бретца-Вестфалла для контроля FWER:
+
+- скорректированные p-values:
+
+```{r}
+hbw <- lm(Height ~ Position, soccer_wrk) %>% 
+  multcomp::glht(linfct = multcomp::mcp(Position = "Tukey"))
+
+hbw_res <- hbw %>% summary()
+print(hbw_res)
+```
+
+получили скорректированные p-value, видим что разница есть у всех, кроме  Midfielder - Goalkeeper и  Forward - Defender.     
+
+```{r}
+hbw_ci <- hbw_res %>% confint()
+hbw_ci
+```
+
+Смотрим 95% ДИ, строим график для наглядности
  
 ```{r}
-boxplot(Height~Position, data=soccer_wrk)
+plot1 <- par()$mar
+par(mar = c(5, 10, 4, 2)+0.1)
+hbw_res %>% plot(xlab = "Разница в среднем росте, см", main = "95% family-wise ДИ")
+par(mar = plot1)
+
 ```
  
+Ориентируясь на данные анализа и графика, можно отвергнуть гипотезы о равенстве среднего роста в четырёх парах сравниваемых позицийн на уровне значимости альфа - 0.05. Для этих же пар полученные скорректированные 95%-ные ДИ для разницы в среднем росте не включают в себя 0. Для двух пар позиций мы не можем отвергнуть нулевую гипотезу - и соответствующие ДИ включают в себя 0.
+
+
+Проведем попарные тесты:
+
+смотрим средний рост защитника в генеральной совокупности
+
 ```{r}
-summary(CI1, p.adjust.method="holm")
+soccer_wrk %>%  pull(Height) %>% mean(na.rm = TRUE)
 ```
- 
+Проводим попарное сравнение
+
 ```{r}
-summary(CI1, p.adjust.method="BH")
+library(car)
+
+position.lm <- lm(Height ~ Position,
+                    data=soccer_wrk)
+position.anova <- car::Anova(position.lm, type=3)
+position.anova
+
 ```
- 
+
+```{r}
+
+position.lsm <- emmeans::emmeans(position.lm, pairwise~Position, adjust="fdr")
+position.contrasts <- emmeans::contrast(position.lsm, "eff")
+
+position.contrasts
+```
+
+Сравниваем попарно 95% ДИ для разницы средних в росте каждой из позиции на поле
+
+
+```{r}
+library(lsmeans)
+position.model <- lm(Height ~ Position,
+                    data=soccer_wrk)
+position.lsm <- lsmeans::lsmeans(position.model, pairwise~Position)
+position.lsm
+
+```
+
+
+Аналогичное проделываем с поправкой Холма
+
+
+```{r}
+position.lsm <- lsmeans::lsmeans(position.model, pairwise~Position, adjust="holm")
+position.lsm
+
+```
+
+проводим попарное сравнение с поправкой Бонфферони
+
+```{r}
+position.lsm <- lsmeans::lsmeans(position.model, pairwise~Position, adjust="bonferroni")
+position.lsm
+```
+Сравниваем связь между средним ростом футболиста и страной
+
+
+```{r}
+lm(Height ~ Nationality, soccer_wrk) %>% anova()
+```
+
+На 5%-ном уровне значимости мы не можем отвергнуть гипотезу о равенстве среднего роста футболистов каждой страны (отстутсвии взаимосвязи между ростом футболиста и страной, за которую он играет).
+
+
+Post-hoc процедура Хоторна-Бретца-Вестфалла
+
+```{r}
+hbw_res <- lm(Height ~ Nationality, soccer_wrk) %>% 
+  multcomp::glht(linfct = multcomp::mcp(Nationality = "Tukey"))
+
+hbw_sum <- hbw_res %>% summary()
+hbw_sum
+```
+
+Смотрим 95% ДИ
+
+```{r}
+hbw_ci <- hbw_res %>% confint()
+hbw_ci
+```
+
+Делаем вывод, что футболисты из разных стран не различаются по среднему росту и при попарном сравнении на 5%-ном уровне значимости, все скорректированные 95%-ные ДИ включают в себя ноль.
