@@ -1,0 +1,259 @@
+---
+title: "HW_Glazkov"
+author: "Nadezhda Tsurikova"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(ROCR)
+library(pROC)
+library(tibble)
+library(xtable)
+library(gtsummary)
+library(tidyverse)
+library(tidyr)
+library(purrr)
+library(flextable)
+library(corrplot)
+library(corrr)
+```
+
+```{r}
+diab <- read_excel("C:/Users/Nadine/Downloads/diabetes.xlsx")
+
+diab %>% glimpse()
+```
+
+```{r}
+diab <- diab %>% 
+    mutate(across(c(Outcome), ~ as.factor(.x))) %>%
+  mutate(across(c(BMI), ~ as.numeric(.x)))
+
+diab %>% glimpse()
+```
+
+
+
+смотрим где есть нули
+
+```{r}
+colSums(diab==0)
+```
+
+заменяем нули на NA
+
+```{r}
+diab_no.na <- diab %>% mutate_at(c('Glucose', 'BloodPressure', 'SkinThickness', 'Insulin'), ~na_if(., 0))
+```
+
+#У какого количества пациентов из датасета присутствует нарушенная  толерантность к глюкозе (НТГ)? Критерий НТГ – это уровень повышение гликемии  ≥ 7.8 ммоль/л на 120 минуте теста на толерантность к глюкозе. Сколько в датасете  пациентов, у которых нет НТГ? 
+
+```{r}
+NTG <- diab_no.na$Glucose /18
+as <- NTG >=7.8
+sum(as, na.rm=T)
+
+```
+#Сколько в датасете  пациентов, у которых нет НТГ? 
+
+```{r}
+length(NTG) - sum(as, na.rm=T)
+```
+#Как выглядит ROC-кривая для предсказания сахарного диабета по переменной,  характеризующей уровень гликемии? Постройте график. 
+
+```{r}
+
+roc_curve_1 <- roc(Outcome ~ Glucose, data = diab_no.na, ci = T)
+
+roc_curve_1
+
+
+
+```
+
+```{r, fig.height= 3, fig.width=3, dpi=300}
+
+ggroc(roc_curve_1) + 
+    theme_bw()
+
+```
+
+
+
+
+#Чему равна площадь под ROC-кривой, которую вы построили в вопросе 2
+
+```{r}
+
+auc(diab_no.na$Outcome, diab_no.na$Glucose)
+
+```
+
+Площадь составляет 0.7928
+
+
+#Чему равен 95% двусторонний ДИ для площади под ROC-кривой, которую вы  построили в вопросе 2
+
+```{r}
+ci.auc(diab_no.na$Outcome, diab_no.na$Glucose)
+```
+
+выбираем лучший порог
+
+```{r}
+roc_curve_1 %>% coords(x = "best", best.method = "closest.topleft")
+```
+Лучший порог: чувствительность 0.73, специфичность 0.706
+
+#Постройте ROC-кривую и определите, какое пороговое значение является  оптимальным для предсказания сахарного диабета по уровню инсулина? Какой  чувствительностью и специфичностью обладает данный порог?
+
+```{r}
+roc_curve_2 <- roc(Outcome ~ Insulin, data = diab_no.na, ci = T)
+
+roc_curve_2
+
+```
+
+```{r, fig.height= 3, fig.width=3, dpi=300}
+
+ggroc(roc_curve_2) + 
+    theme_bw()
+```
+
+#Чему равна площадь под ROC-кривой, которую вы построили в вопросе 2
+
+```{r}
+
+auc(diab_no.na$Outcome, diab_no.na$Insulin)
+
+```
+
+Площадь равна 0.731
+
+#Чему равен 95% двусторонний ДИ для площади под ROC-кривой, которую вы  построили в вопросе 2
+
+```{r}
+ci.auc(diab_no.na$Outcome, diab_no.na$Insulin)
+```
+
+выбираем лучший порог
+
+```{r}
+roc_curve_2 %>% coords(x = "best", best.method = "closest.topleft")
+```
+Лучший порог: чувствительность 0.784, специфичность 0.621
+
+#число беременностей
+
+```{r}
+roc_curve_3 <- roc(Outcome ~ Pregnancies, data = diab_no.na, ci = T)
+
+roc_curve_3
+
+```
+
+
+```{r}
+auc(diab$Outcome, diab$Pregnancies)
+```
+
+выбираем лучший порог
+
+```{r}
+roc_curve_3 %>% coords(x = "best", best.method = "closest.topleft")
+```
+
+
+АД
+
+```{r}
+roc_curve_4 <- roc(Outcome ~ BloodPressure, data = diab_no.na, ci = T)
+
+roc_curve_4
+
+```
+
+
+```{r}
+auc(diab$Outcome, diab$BloodPressure)
+```
+
+выбираем лучший порог
+
+```{r}
+roc_curve_4 %>% coords(x = "best", best.method = "closest.topleft")
+```
+
+
+
+толщина кожной складки на трицепсе
+
+```{r}
+roc_curve_5 <- roc(Outcome ~ SkinThickness, data = diab_no.na, ci = T)
+
+roc_curve_5
+
+```
+
+
+```{r}
+auc(diab$Outcome, diab$SkinThickness)
+```
+
+выбираем лучший порог
+
+```{r}
+roc_curve_5 %>% coords(x = "best", best.method = "closest.topleft")
+```
+
+
+
+ИМТ
+```{r}
+roc_curve_7 <- roc(Outcome ~ BMI, data = diab_no.na, ci = T)
+
+roc_curve_7
+
+```
+
+
+```{r}
+auc(diab$Outcome, diab$BMI)
+```
+
+выбираем лучший порог
+
+```{r}
+roc_curve_7 %>% coords(x = "best", best.method = "closest.topleft")
+```
+
+возраст
+
+```{r}
+roc_curve_8 <- roc(Outcome ~ Age, data = diab_no.na, ci = T)
+
+roc_curve_8
+
+```
+
+
+```{r}
+auc(diab$Outcome, diab$Age)
+```
+
+выбираем лучший порог
+
+```{r}
+roc_curve_8 %>% coords(x = "best", best.method = "closest.topleft")
+```
+
+
+
+#Как вы можете интерпретировать это знание? Какая  количественная переменная имеет наименьшую площадь? 
+##наибольшая площадь у колонки "глюкоза", наименьшая - "толщина кожной складки". Большая площадь рок-кривой говорит о высокой предсказательной модели данного графика, маленькая площадь - говорит о низкой предсказательной модели и на нее лучше не ориентироваться при проведении анализа.
