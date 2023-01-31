@@ -1,0 +1,159 @@
+---
+title: "MultiComp"
+author: "Nadezhda Tsurikova"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(pROC)
+library(gtsummary)
+library(Rmisc)
+
+```
+
+
+```{r}
+soccer_general <- read.csv("data/soccer.csv", sep=";")[, 2:6] %>% 
+  mutate(Position = as.factor(Position), 
+         Nationality = as.factor(Nationality), 
+         Age = as.numeric(Age), 
+         Height = as.numeric(Height)
+  ) %>% 
+  filter(Nationality %in% c("Spanish", "Italian", "German", "English", "Argentinian")) 
+
+
+
+set.seed(1) 
+
+
+
+soccer_wrk <- soccer_general[sample(1:nrow(soccer_general), 150), ] %>% 
+  mutate(Nationality = factor(Nationality))
+```
+
+
+
+
+```{r}
+population_height <- mean(soccer_general$Height)
+
+height_mean <- aggregate(soccer_wrk,Height~Position, FUN=mean)
+
+print(height_mean)
+```
+
+```{r}
+ggplot() +
+  geom_boxplot(data = soccer_wrk,
+               aes(x = Position, y = Height)) +
+  geom_hline(yintercept = population_height, color = 'red') +
+  theme_light()
+```
+
+
+
+```{r}
+roles <- c("Defender", "Forward", "Goalkeeper", "Midfielder")
+print("ДИ без поправки", quote = F)
+
+for (i in 1:(length(roles)-1)){
+  x <- soccer_wrk %>%
+    filter(Position==roles[i]) %>% 
+    select(Height)
+  x <- x$Height
+  
+  for ( j in (i+1):(length(roles)))
+  {
+    y <- soccer_wrk %>%
+      filter(Position==roles[j]) %>% 
+      select(Height)
+    y <- y$Height
+    shortest <- min(length(x), length(y))
+    y <- tail(y, shortest)
+    x <- tail(x, shortest)
+    print(c(roles[i], roles[j]))
+    t = t.test(x,y, mu=0)
+    print(c("Настоящая разница средних:",mean(y)-mean(x)), quote = F)
+    print(c("ДИ",t$conf.int[1], t$conf.int[2]), quote = F)
+  }
+}
+```
+
+
+```{r}
+print("ДИ с поправкой", quote = F)
+for (i in 1:(length(roles)-1)){
+  x <- soccer_wrk %>%
+    filter(Position==roles[i]) %>% 
+    select(Height)
+  x <- x$Height
+  
+  for ( j in (i+1):(length(roles)))
+  {
+    y <- soccer_wrk %>%
+      filter(Position==roles[j]) %>% 
+      select(Height)
+    y <- y$Height
+    shortest <- min(length(x), length(y))
+    y <- tail(y, shortest)
+    x <- tail(x, shortest)
+    print(c(roles[i], roles[j]))
+    alfa = 0.05/2
+    t = t.test(x,y, mu=0, conf.level = 1 - alfa)
+    print(c("Настоящая разница средних:",mean(y)-mean(x)), quote = F)
+    print(c("ДИ",t$conf.int[1], t$conf.int[2]), quote = F)
+  }
+}
+```
+
+Попарные тест, можно применять если данные распределены нормально.
+Проверяем как распраделены наши данные с помощью теста Шапиро-Вилкоксона.
+
+H0: распределение данных значимо не отличается от нормального распределения
+
+H1: распределение данных значимо отличается от нормального
+
+```{r}
+normalityVar1<-soccer_wrk %>%
+  select(Position, Height) %>%
+  group_by(Position) %>%
+  summarise_all(.funs = funs(statistic = shapiro.test(.)$statistic, 
+                             p.value = shapiro.test(.)$p.value))
+
+normalityVar1
+
+```
+
+```{r}
+print("Попарные тесты без поправок", quote = F)
+pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, pool.sd = F, p.adjust.method = "none")
+```
+
+Есть статистически значимые отличия между: Defender-Midfielder, Defender-Goalkeeper, Forward-Goalkeeper, Goalkeeper-Midfielder. 
+
+
+```{r}
+print("Попарные тесты c поправкой Холма", quote = F)
+pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, pool.sd = F, p.adjust.method = "holm")
+```
+
+
+Есть статистически значимые отличия между: Defender-Midfielder, Defender-Goalkeeper, Forward-Goalkeeper, Goalkeeper-Midfielder. 
+
+
+
+```{r}
+print("Попарные тесты c поправкой Брест-Хольца", quote = F)
+pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, pool.sd = F, p.adjust.method = "BH")
+```
+
+Есть статистически значимые отличия между: Defender-Midfielder, Defender-Goalkeeper, Forward-Goalkeeper, Goalkeeper-Midfielder. 
+
+Т.е. вне зависимости от поправки, количество открытий было одинаковым.
