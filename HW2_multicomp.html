@@ -532,8 +532,8 @@ Defender-Goalkeeper, Forward-Goalkeeper, Goalkeeper-Midfielder.</p>
 ## P value adjustment method: holm</code></pre>
 <p>Есть статистически значимые отличия между: Defender-Midfielder,
 Defender-Goalkeeper, Forward-Goalkeeper, Goalkeeper-Midfielder.</p>
-<pre class="r"><code>print(&quot;Попарные тесты c поправкой Брест-Хольца&quot;, quote = F)</code></pre>
-<pre><code>## [1] Попарные тесты c поправкой Брест-Хольца</code></pre>
+<pre class="r"><code>print(&quot;Попарные тесты c поправкой  Benjamin-Hochberg&quot;, quote = F)</code></pre>
+<pre><code>## [1] Попарные тесты c поправкой  Benjamin-Hochberg</code></pre>
 <pre class="r"><code>pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, pool.sd = F, p.adjust.method = &quot;BH&quot;)</code></pre>
 <pre><code>## 
 ##  Pairwise comparisons using t tests with non-pooled SD 

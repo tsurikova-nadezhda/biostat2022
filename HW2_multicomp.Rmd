@@ -150,7 +150,7 @@ pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, pool.sd = F, p.adjust.me
 
 
 ```{r}
-print("Попарные тесты c поправкой Брест-Хольца", quote = F)
+print("Попарные тесты c поправкой  Benjamin-Hochberg", quote = F)
 pairwise.t.test(soccer_wrk$Height, soccer_wrk$Position, pool.sd = F, p.adjust.method = "BH")
 ```
 
