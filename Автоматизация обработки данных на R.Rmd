@@ -1,0 +1,108 @@
+---
+title: "HW_for_Tomilov"
+author: "Nadezhda Tsurikova"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library(readxl)
+library(psych)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(flextable)
+library(Rmisc)
+library(ggplot2)
+
+```
+
+
+# Cтатистический отчёт с таблицами описательной статистики по всем имеющимся визитам по всем группам для каждой переменной.
+
+
+```{r }
+data <- tibble(read_excel('data_excel (5).xlsx'))
+summary(data)
+describe(data, na.rm = TRUE, skew = FALSE, ranges = TRUE)
+```
+
+```{r results = F}
+data <- data %>%
+  mutate(`Группа крови` = `Группа крови` %>% as.character() %>% 
+             str_replace('NA', 'нет данных') %>% as.factor()) 
+```
+
+
+
+
+```{r results = F}
+data <- data %>%
+  mutate_at(vars(matches("_E")),
+            str_replace,
+            pattern = ",",
+            replacement = "\\.") %>% 
+  mutate_at(vars(contains("_E")), funs(as.numeric))
+
+data$`Группа` <- as.factor(data$`Группа`)
+data$`Пол` <- as.factor(data$`Пол`)
+```
+
+# Для категориальных переменных
+
+
+```{r }
+data %>%
+  select(`Группа`, where(is.factor)) %>%
+  count(`Группа` ~ `Группа крови` + `Пол`) %>%
+  group_by(`Группа`) %>%
+  mutate(`Всего / % по выборке` = paste0(freq, ' / ', (freq/sum(freq)) %>% round(4) %>% `*`(100) %>% str_c('%'))) %>% mutate(freq = NULL) %>%
+  tidyr::pivot_wider(names_from = c(`Группа`),
+                     values_from = c(`Всего / % по выборке`)) %>%
+  flextable()%>%
+  theme_box() 
+ 
+```
+
+# Для количеcтвенных переменных
+
+
+```{r results = F}
+statistics <- list(
+      `_Количество субъектов` = ~length(.x) %>% as.character(),
+      `_Количество (есть данные)` = ~ sum(!is.na(.x)) %>% as.character(),
+      `_Нет данных` = ~ sum(is.na(.x)) %>% as.character(),
+      `_Ср. знач.` = ~ mean(.x, na.rm = TRUE) %>% round(2) %>% as.character(),
+      `_Станд. отклон.` = ~ sd(.x, na.rm = TRUE) %>% round(2) %>% as.character(),
+      `_95% ДИ для среднего` = ~ paste0(CI(.x, ci = 0.95)[3] %>% round(2), '-', CI(.x, ci = 0.95)[1] %>% round(2)) %>% as.character(),
+      `_мин. - макс.` = ~ paste0(min(.x, na.rm = TRUE) %>% round(2), " - ", max(.x, na.rm = TRUE) %>% round(2)) %>% as.character(),
+      `_Медиана` = ~ median(.x, na.rm = TRUE) %>% round(2) %>% as.character(),
+      `_Q1 - Q3` = ~ paste0(quantile(.x, 0.25, na.rm = TRUE) %>% round(2), " - ", quantile(.x, 0.75, na.rm = TRUE) %>% round(2) %>% as.character())
+      )
+```
+
+
+
+```{r}
+data1 <-
+  data %>%
+  select(`Группа`, where(is.numeric)) %>% 
+  group_by(`Группа`) %>%
+  dplyr::summarise(across(where(is.numeric), statistics)) %>% 
+  t() %>% as.data.frame() %>% `colnames<-`(.[1, ]) %>%
+  .[-1, ] %>% rownames_to_column("value") %>%
+  separate(value, into = c("Переменная","Статистика"), sep = '__') %>% 
+  flextable()%>%
+  theme_box() %>%
+  merge_v(c('Группа','Переменная')) %>%
+  flextable::align(j = c(1, 3:4), align = "center", part = 'all') 
+
+data1
+```
